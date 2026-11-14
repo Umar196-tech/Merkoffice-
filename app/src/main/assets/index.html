@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MerkOffice Editor</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#edf1f6;font-family:Arial,sans-serif;color:#172033}
+.toolbar{position:sticky;top:0;background:#fff;padding:8px;display:flex;gap:6px;flex-wrap:wrap;box-shadow:0 2px 8px #0001}
+button,select{border:1px solid #d5dce7;border-radius:7px;background:#fff;padding:9px;font-size:14px}
+button:active{background:#dce8ff}.page{background:#fff;max-width:850px;min-height:78vh;margin:18px auto;padding:48px 54px;box-shadow:0 2px 14px #0001;outline:none;line-height:1.6}
+#status{text-align:center;color:#68758a;font-size:12px;padding:8px}
+@media(max-width:600px){.page{margin:8px;padding:24px 18px;min-height:80vh}}
+@media print{body{background:#fff}.toolbar,#status{display:none}.page{box-shadow:none;margin:0;max-width:none;padding:0}}
+</style></head><body>
+<div class="toolbar">
+<button onclick="cmd('bold')"><b>B</b></button><button onclick="cmd('italic')"><i>I</i></button>
+<button onclick="cmd('underline')"><u>U</u></button>
+<select onchange="cmd('formatBlock',this.value)"><option value="p">Paragraph</option><option value="h1">Heading 1</option><option value="h2">Heading 2</option><option value="h3">Heading 3</option></select>
+<select onchange="cmd('fontName',this.value)"><option>Arial</option><option>Times New Roman</option><option>Georgia</option><option>Courier New</option></select>
+<button onclick="cmd('insertUnorderedList')">• List</button><button onclick="cmd('insertOrderedList')">1. List</button>
+<button onclick="cmd('justifyLeft')">Left</button><button onclick="cmd('justifyCenter')">Center</button><button onclick="cmd('justifyRight')">Right</button>
+<button onclick="cmd('undo')">Undo</button><button onclick="cmd('redo')">Redo</button>
+</div>
+<main id="paper" class="page" contenteditable="true" spellcheck="true">
+<h1>Welcome to MerkOffice</h1><p>Your documents stay on your device. Start typing here.</p>
+</main><div id="status">Offline editor • Stored locally when you save</div>
+<script>
+const paper=document.getElementById('paper');
+function cmd(name,value=null){paper.focus();document.execCommand(name,false,value)}
+window.newDocument=()=>{paper.innerHTML='<p><br></p>';paper.focus()};
+window.getDocumentHtmlBase64=()=>btoa(unescape(encodeURIComponent(paper.innerHTML)));
+window.loadDocumentFromBase64=(b64)=>{try{paper.innerHTML=decodeURIComponent(escape(atob(b64)));}catch(e){paper.textContent='Unable to read this document.'}};
+</script></body></html>
