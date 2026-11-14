@@ -10,7 +10,7 @@ button:active{background:#dce8ff}.page{background:#fff;max-width:850px;min-heigh
 @media(max-width:600px){.page{margin:8px;padding:24px 18px;min-height:80vh}}
 @media print{body{background:#fff}.toolbar,#status{display:none}.page{box-shadow:none;margin:0;max-width:none;padding:0}}
 </style></head><body>
-<div class="toolbar">
+<div class="toolbar">\n<button onclick="MerkOffice.openWordFile()">Open .DOCX</button><button onclick="MerkOffice.saveWordFile()">Save .DOCX</button>
 <button onclick="cmd('bold')"><b>B</b></button><button onclick="cmd('italic')"><i>I</i></button>
 <button onclick="cmd('underline')"><u>U</u></button>
 <select onchange="cmd('formatBlock',this.value)"><option value="p">Paragraph</option><option value="h1">Heading 1</option><option value="h2">Heading 2</option><option value="h3">Heading 3</option></select>
@@ -26,6 +26,6 @@ button:active{background:#dce8ff}.page{background:#fff;max-width:850px;min-heigh
 const paper=document.getElementById('paper');
 function cmd(name,value=null){paper.focus();document.execCommand(name,false,value)}
 window.newDocument=()=>{paper.innerHTML='<p><br></p>';paper.focus()};
-window.getDocumentHtmlBase64=()=>btoa(unescape(encodeURIComponent(paper.innerHTML)));
+window.getDocumentHtmlBase64=()=>btoa(unescape(encodeURIComponent(paper.innerHTML)));\nwindow.getDocumentHtml=()=>paper.innerHTML;\nwindow.loadDocumentFromHtml=(html)=>{paper.innerHTML=html||'<p><br></p>';};
 window.loadDocumentFromBase64=(b64)=>{try{paper.innerHTML=decodeURIComponent(escape(atob(b64)));}catch(e){paper.textContent='Unable to read this document.'}};
 </script></body></html>
