@@ -3,7 +3,6 @@ package com.merkoffice.app;
 import android.os.Bundle;
 import android.print.PrintAttributes;
 import android.print.PrintManager;
-import android.net.Uri;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
@@ -14,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 
 public class MainActivity extends AppCompatActivity {
     private WebView editor;
@@ -22,8 +22,10 @@ public class MainActivity extends AppCompatActivity {
         registerForActivityResult(new ActivityResultContracts.OpenDocument(), uri -> {
             if (uri == null) return;
             try (InputStream in = getContentResolver().openInputStream(uri)) {
+                if (in == null) throw new java.io.IOException("Cannot open file");
                 String html = DocxHelper.read(in);
-                editor.evaluateJavascript("window.loadDocumentFromHtml(" + org.json.JSONObject.quote(html) + ")", null);
+                editor.evaluateJavascript("window.loadDocumentFromHtml(" +
+                    org.json.JSONObject.quote(html) + ")", null);
                 Toast.makeText(this, "Word document opened", Toast.LENGTH_SHORT).show();
             } catch (Exception e) {
                 Toast.makeText(this, "Could not open this Word document", Toast.LENGTH_LONG).show();
@@ -36,8 +38,7 @@ public class MainActivity extends AppCompatActivity {
             if (uri == null) return;
             editor.evaluateJavascript("window.getDocumentHtml()", value -> {
                 try {
-                    Object decoded = new org.json.JSONTokener(value).nextValue();
-                    String html = decoded instanceof String ? (String) decoded : "";
+                    String html = readJavascriptString(value);
                     try (OutputStream out = getContentResolver().openOutputStream(uri)) {
                         if (out == null) throw new java.io.IOException("Unable to create file");
                         DocxHelper.write(html, out);
@@ -49,6 +50,34 @@ public class MainActivity extends AppCompatActivity {
             });
         });
 
+    private final ActivityResultLauncher<String> saveHtml =
+        registerForActivityResult(new ActivityResultContracts.CreateDocument("text/html"), uri -> {
+            if (uri == null) return;
+            editor.evaluateJavascript("window.getDocumentHtml()", value -> {
+                try {
+                    String body = readJavascriptString(value);
+                    String document = "<!doctype html><html><head><meta charset=\"utf-8\">" +
+                        "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
+                        "<title>MerkOffice document</title><style>body{font-family:Arial,sans-serif;" +
+                        "line-height:1.6;margin:40px;max-width:900px}img{max-width:100%}</style>" +
+                        "</head><body>" + body + "</body></html>";
+                    try (OutputStream out = getContentResolver().openOutputStream(uri)) {
+                        if (out == null) throw new java.io.IOException("Unable to create file");
+                        out.write(document.getBytes(StandardCharsets.UTF_8));
+                        out.flush();
+                    }
+                    Toast.makeText(this, "Document exported successfully", Toast.LENGTH_SHORT).show();
+                } catch (Exception e) {
+                    Toast.makeText(this, "Export failed. Please try again.", Toast.LENGTH_LONG).show();
+                }
+            });
+        });
+
+    private static String readJavascriptString(String value) throws Exception {
+        Object decoded = new org.json.JSONTokener(value).nextValue();
+        return decoded instanceof String ? (String) decoded : "";
+    }
+
     private class EditorBridge {
         @JavascriptInterface public void openWordFile() {
             runOnUiThread(() -> openDocx.launch(new String[]{
@@ -58,6 +87,12 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface public void saveWordFile() {
             runOnUiThread(() -> saveDocx.launch("MerkOffice-document.docx"));
         }
+        @JavascriptInterface public void saveHtmlFile() {
+            runOnUiThread(() -> saveHtml.launch("MerkOffice-document.html"));
+        }
+        @JavascriptInterface public void printDocument() {
+            runOnUiThread(() -> exportPdf(null));
+        }
     }
 
     @Override protected void onCreate(Bundle savedInstanceState) {
@@ -66,6 +101,7 @@ public class MainActivity extends AppCompatActivity {
         editor = findViewById(R.id.editor);
         editor.getSettings().setJavaScriptEnabled(true);
         editor.getSettings().setDomStorageEnabled(true);
+        editor.getSettings().setAllowFileAccess(true);
         editor.addJavascriptInterface(new EditorBridge(), "MerkOffice");
         editor.setWebViewClient(new WebViewClient());
         editor.setWebChromeClient(new WebChromeClient());
@@ -76,9 +112,7 @@ public class MainActivity extends AppCompatActivity {
         editor.evaluateJavascript("window.newDocument()", null);
     }
     public void saveDocument(android.view.View view) {
-        editor.evaluateJavascript("window.getDocumentHtmlBase64()", value -> {
-            Toast.makeText(this, "Use Save Word to create a .docx file", Toast.LENGTH_SHORT).show();
-        });
+        saveHtml.launch("MerkOffice-document.html");
     }
     public void openDocument(android.view.View view) {
         openDocx.launch(new String[]{"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
@@ -92,6 +126,8 @@ public class MainActivity extends AppCompatActivity {
             printManager.print("MerkOffice document", editor.createPrintDocumentAdapter("MerkOffice"),
                 new PrintAttributes.Builder().setMediaSize(PrintAttributes.MediaSize.ISO_A4)
                     .setMinMargins(PrintAttributes.Margins.NO_MARGINS).build());
+        } else {
+            Toast.makeText(this, "Printing is not available on this device", Toast.LENGTH_LONG).show();
         }
     }
 }
